@@ -20,6 +20,7 @@ module.exports = {
      // Paths for simple persistence
      HISTORY_PATH: process.env.HISTORY_PATH || './data/searchHistory.json',
      STATS_PATH: process.env.STATS_PATH || './data/funStats.json',
+    USER_PREFS_PATH: process.env.USER_PREFS_PATH || './data/userPrefs.json',
     // Comma-separated admin user ids (e.g. "12345,67890") for admin-only commands like /reload
     ADMIN_IDS: (process.env.ADMIN_IDS || '').split(',').map(s => Number(s)).filter(Boolean),
     WELCOME_MESSAGE: `🎓 *Welcome to Athar Bot!* 

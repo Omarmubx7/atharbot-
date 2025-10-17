@@ -17,6 +17,26 @@ const htuAssistant = new HTUAssistant();
 // User sessions for better interaction
 const userSessions = new Map();
 
+// Helper: check or init session for a chat
+function ensureSession(chatId) {
+    const s = userSessions.get(chatId) || { timestamp: Date.now(), beginner: false };
+    userSessions.set(chatId, s);
+    return s;
+}
+
+// Helper: build simple inline keyboard for beginners or normal keyboard
+function buildWelcomeInline(chatId) {
+    const s = ensureSession(chatId);
+    const beginnerLabel = s.beginner ? '🔁 Turn off Beginner Mode' : '✨ Beginner Mode'
+    return {
+        inline_keyboard: [
+            [{ text: '🔍 Search (type any name)', callback_data: 'start' }],
+            [{ text: '🏢 Departments', callback_data: 'departments' }, { text: '🎯 Clubs', callback_data: 'clubs' }],
+            [{ text: beginnerLabel, callback_data: 'beginner_toggle' }, { text: '❓ Help', callback_data: 'help' }]
+        ]
+    };
+}
+
 // Search history for users (in-memory backed by file)
 const searchHistory = new Map();
 
@@ -94,6 +114,34 @@ ensureDirForFile(config.HISTORY_PATH);
 ensureDirForFile(config.STATS_PATH);
 loadSearchHistoryFromFile();
 loadFunStats();
+// Load user prefs
+ensureDirForFile(config.USER_PREFS_PATH);
+function loadUserPrefs() {
+    const raw = loadJson(config.USER_PREFS_PATH, {});
+    Object.entries(raw).forEach(([uid, prefs]) => {
+        userSessions.set(Number(uid), Object.assign({ timestamp: Date.now() }, prefs));
+    });
+}
+
+function saveUserPrefs() {
+    const obj = {};
+    for (const [uid, prefs] of userSessions.entries()) {
+        // only persist small prefs (beginner) to avoid storing large session state
+        obj[uid] = { beginner: prefs.beginner === true };
+    }
+    saveJson(config.USER_PREFS_PATH, obj);
+}
+loadUserPrefs();
+
+// Ensure a prefs file exists on disk to simplify admin export and first-run behavior
+try {
+    if (!fs.existsSync(config.USER_PREFS_PATH)) {
+        saveJson(config.USER_PREFS_PATH, {});
+        console.log('Created default user prefs file at', config.USER_PREFS_PATH);
+    }
+} catch (e) {
+    console.error('Error ensuring user prefs file exists:', e);
+}
 
 // Global error handler for unhandled errors
 process.on('unhandledRejection', (reason, promise) => {
@@ -144,10 +192,12 @@ I'm **Athar Bot** - your HTU assistant. Ask me anything or search directly!
     };
     
     try {
+        const s = ensureSession(chatId);
+        const markup = s.beginner ? buildWelcomeInline(chatId) : keyboard;
         await bot.sendMessage(chatId, welcomeMessage, {
             parse_mode: 'Markdown',
             disable_web_page_preview: true,
-            reply_markup: keyboard
+            reply_markup: markup
         });
     } catch (error) {
         console.error('Error sending welcome message:', error);
@@ -155,10 +205,63 @@ I'm **Athar Bot** - your HTU assistant. Ask me anything or search directly!
     }
 });
 
+// Toggle beginner mode command
+bot.onText(/\/beginner/, async (msg) => {
+    const chatId = msg.chat.id;
+    const s = ensureSession(chatId);
+    s.beginner = !s.beginner;
+    userSessions.set(chatId, s);
+    const reply = s.beginner ? '✅ Beginner Mode activated — big buttons and simple messages!' : '🔁 Beginner Mode turned off. Back to normal.';
+    saveUserPrefs();
+    await bot.sendMessage(chatId, reply, { reply_markup: buildWelcomeInline(chatId) });
+});
+
+// Show and toggle user prefs
+bot.onText(/\/prefs/, async (msg) => {
+    const chatId = msg.chat.id;
+    const s = ensureSession(chatId);
+    const text = `🔧 Your Preferences:\n\nBeginner mode: ${s.beginner ? 'On' : 'Off'}`;
+    const kb = { inline_keyboard: [[{ text: s.beginner ? 'Turn off Beginner' : 'Turn on Beginner', callback_data: 'beginner_toggle' }]] };
+    await bot.sendMessage(chatId, text, { reply_markup: kb });
+});
+
+// Admin export of prefs (sends file contents to admin chat)
+bot.onText(/\/export_prefs/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    if (!config.ADMIN_IDS || !config.ADMIN_IDS.includes(userId)) {
+        await bot.sendMessage(chatId, '❌ You are not authorized to run this command.');
+        return;
+    }
+    try {
+        if (!fs.existsSync(config.USER_PREFS_PATH)) {
+            await bot.sendMessage(chatId, 'No prefs file found.');
+            return;
+        }
+        await bot.sendDocument(chatId, config.USER_PREFS_PATH, {}, { caption: 'User prefs export' });
+    } catch (e) {
+        console.error('Error exporting prefs', e);
+        await bot.sendMessage(chatId, `⚠️ Failed to export prefs: ${String(e)}`);
+    }
+});
+
 // Handle /help command
 bot.onText(/\/help/, async (msg) => {
     const chatId = msg.chat.id;
-    
+    const s = ensureSession(chatId);
+    if (s.beginner) {
+        const simple = `👋 Hi! I'm Athar Bot. I can help you find people, clubs, and rooms.
+
+1) Type a name or place (e.g. "Mohammad" or "S-321").
+2) Tap a button to browse departments or clubs.
+3) Tap any result to see contact info and office hours.
+
+Try now: type a name like "Mohammad"`;
+        const kb = { inline_keyboard: [[{ text: '🔍 Type and search', callback_data: 'start' }], [{ text: '🏢 Departments', callback_data: 'departments' }, { text: '🎯 Clubs', callback_data: 'clubs' }]] };
+        await bot.sendMessage(chatId, simple, { parse_mode: 'Markdown', reply_markup: kb });
+        return;
+    }
+
     const helpMessage = `🤖 **Athar Bot - Your University Helper**
 
 👋 **How to Use:**
@@ -166,23 +269,9 @@ Just type what you're looking for! I'll understand what you mean.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-�️ **Natural Language Questions:**
-Ask me questions in normal language and I'll understand!
-
-**Examples:**
-• "What are the office hours of Dr. Mohammad?"
-• "Who is the dean of engineering?"
-• "Where is the Computer Science department?"
-• "How can I contact the admission office?"
-• "Who is the registrar?"
-• "What is Razan's email?"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 �🔍 **Smart Search Examples:**
 👨‍⚕️ **Find Doctors:** "Mohammad", "Computer Science", "S-321"
 🎯 **Find Clubs:** "Entrepreneurship", "Volunteer team", "programming"
-🏢 **Find Locations:** "S-321", "N-402", "Engineering Building"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -192,26 +281,7 @@ Ask me questions in normal language and I'll understand!
 /clubs - Browse all clubs and teams
 /buildings - Campus building guide
 /history - View your recent searches
-/stats - Bot statistics and info
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✨ **Cool Features:**
-🧠 Natural language understanding
-🎯 Smart search with typo correction
-🤔 Helpful suggestions when no results found
-📧 Clickable emails and social links
-🏢 Office hours and building information
-📱 Easy-to-use interface
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💡 **Pro Tips:**
-• Ask questions naturally - I'll understand!
-• Don't worry about typos - I'll figure it out
-• Try partial names or keywords
-• Use the quick action buttons below
-• Ask me anything about HTU!`;
+/stats - Bot statistics and info`;
 
     const keyboard = {
         inline_keyboard: [
@@ -381,6 +451,14 @@ Type it now, or tap a suggestion:`;
             }
             // Random features removed by configuration - no-op for these callbacks
                 
+            case 'beginner_toggle': {
+                const s = ensureSession(chatId);
+                s.beginner = !s.beginner;
+                userSessions.set(chatId, s);
+                const text = s.beginner ? '✅ Beginner Mode activated — simplified UI.' : '🔁 Beginner Mode deactivated.';
+                await bot.editMessageText(text, { chat_id: chatId, message_id: messageId, reply_markup: buildWelcomeInline(chatId) });
+                break;
+            }
             case 'departments':
                 const departments = htuAssistant.getDepartments();
                 let deptMessage = `🏢 **HTU Departments**\n\n`;
@@ -1329,6 +1407,31 @@ cron.schedule('*/15 * * * *', () => {
         }
     }
 });
+
+// Simple health endpoint
+try {
+    const healthPort = config.HEALTH_PORT || 3000;
+    http.createServer((req, res) => {
+        if (req.method === 'GET' && req.url === '/healthz') {
+            const mem = process.memoryUsage();
+            const body = JSON.stringify({
+                status: 'ok',
+                uptime: process.uptime(),
+                heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+                sessions: userSessions.size
+            });
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(body);
+        } else {
+            res.writeHead(404);
+            res.end('Not Found');
+        }
+    }).listen(healthPort, () => {
+        console.log(`🔁 Health endpoint listening on :${healthPort}`);
+    });
+} catch (e) {
+    console.error('Failed to start health endpoint', e);
+}
 
 console.log('✅ Bot is running and ready to serve!');
 console.log('🤖 Bot will work 24/7 and handle all requests automatically');
