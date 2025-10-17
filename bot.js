@@ -2,13 +2,16 @@ const TelegramBot = require('node-telegram-bot-api');
 const { HTUAssistant, ensureDirForFile } = require('./utils');
 const config = require('./config');
 const cron = require('node-cron');
+const http = require('http');
 const fs = require('fs');
 
 
 // Google Gemini AI integration is now handled inside the /ai command handler for better error handling.
 
-// Initialize bot
-const bot = new TelegramBot(config.BOT_TOKEN, { polling: true });
+// Initialize bot (support dry-run / test mode by disabling polling)
+const polling = !(process.env.NO_POLL === '1' || process.env.DEBUG_NO_POLL === '1');
+const bot = new TelegramBot(config.BOT_TOKEN, { polling });
+if (!polling) console.log('⚠️ Bot polling disabled (NO_POLL=1 or DEBUG_NO_POLL=1) — running in dry mode');
 const htuAssistant = new HTUAssistant();
 
 // User sessions for better interaction
@@ -46,7 +49,10 @@ function loadJson(filePath, defaultValue) {
 function saveJson(filePath, data) {
     try {
         ensureDirForFile(filePath);
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+        // Atomic write to avoid partial/corrupt files
+        const tmp = `${filePath}.tmp`;
+        fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+        fs.renameSync(tmp, filePath);
     } catch (e) {
         console.error('Error saving json', filePath, e);
     }
