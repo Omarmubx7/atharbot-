@@ -28,148 +28,104 @@ npm install
 
 2. **Start the bot:**
 ```bash
-# For development (with auto-restart)
-npm run dev
+ # Athar Bot — HTU Assistant (Telegram)
 
-# For production (24/7 operation)
+A small, focused Telegram bot to search HTU faculty, clubs, and rooms.
+
+This README reflects the current code in this repository. It omits removed/unused features and documents what's implemented today.
+
+## Key features
+
+- Simple, fast text search for:
+	- Faculty members by name or department
+	- Clubs & teams
+	- Office locations (room numbers)
+- Beginner-friendly UI: a simplified mode with large buttons and short tips. Toggle with `/beginner` or via the inline button.
+- Per-user preferences persisted to disk (minimal data: beginner flag). View and toggle via `/prefs`.
+- Admin-only export of preferences: `/export_prefs` (admins configured with `ADMIN_IDS`).
+- Lightweight health endpoint: GET /healthz returns status, uptime, memory, and active sessions.
+- Atomic JSON writes to avoid corrupt files when saving prefs, history, or stats.
+
+## Quick start
+
+Requirements:
+- Node.js (v16+ recommended)
+- npm
+
+Install and run locally:
+
+```powershell
+npm install
+# Development (polling):
+npm run dev
+# Production:
 npm start
 ```
 
-## 📱 Bot Commands
+Environment variables (recommended to set in your environment or platform):
 
-| Command | Description |
-|---------|-------------|
-| `/start` | Welcome message and bot introduction |
-| `/help` | Show help and available commands |
-| `/departments` | List all available departments |
-| `/stats` | Show bot statistics |
+- `BOT_TOKEN` (required) — your Telegram bot token
+- `ADMIN_IDS` (optional) — comma-separated Telegram numeric user IDs for admin commands, e.g. "12345,67890"
+- `NO_POLL` or `DEBUG_NO_POLL` (optional) — set to `1` to disable polling for dry-run/testing (bot won't contact Telegram)
+- `HEALTH_PORT` (optional) — port for the health endpoint (default: 3000)
 
-## 🔍 Search Features
+## Commands (user)
 
-### Text Search
-Simply type any text to search:
-- **Names**: "Mohammad", "Dr. Samir"
-- **Departments**: "Computer Science", "Cyber Security"
-- **Offices**: "S-321", "W-B05"
-- **Schools**: "Computing"
+- `/start` — Welcome and quick actions
+- `/help` — Short usage tips
+- `/beginner` — Toggle beginner-friendly UI
+- `/prefs` — View and toggle minimal persisted preferences
+- `/departments` — Browse departments
+- `/clubs` — Browse clubs
+- `/history` — Your recent searches
 
-### Smart Features
-- Case-insensitive search
-- Partial name matching
-- Relevance scoring
-- Multiple result handling
-- Interactive result selection
+## Commands (admin)
 
-## 🏗️ Project Structure
+- `/reload` — Reload data files (admin only)
+- `/export_prefs` — Send user prefs file to the admin chat (admin only)
 
-```
-telegram-bot/
-├── bot.js          # Main bot logic
-├── utils.js        # Search and utility functions
-├── config.js       # Configuration settings
-├── package.json    # Dependencies
-└── README.md       # This file
-```
+Admin users are configured via the `ADMIN_IDS` environment variable and must be numeric Telegram user IDs.
 
-## 🔧 Configuration
+## Data files
 
-Edit `config.js` to customize:
-- Bot token
-- Maximum search results
-- Welcome message
-- Data file path
+- `doctors.json` — primary data source used for searches (ships in repo)
+- `htuClubs.json` — clubs and teams data
+- `htuNameSystem.json` — optional name metadata
+- `data/` (created at runtime) — contains persisted files:
+	- `searchHistory.json`
+	- `funStats.json`
+	- `userPrefs.json`
 
-## 📊 Data Source
+Notes: The bot persists only minimal per-user prefs (the beginner flag) to avoid saving large session state.
 
-The bot uses the `doctors.json` file in this folder by default, containing:
-- Doctor names and departments
-- Email addresses (clickable)
-- Office locations
-- Office hours
+## Health & monitoring
 
-## 🛠️ Development
+The bot starts a small HTTP server on `HEALTH_PORT` (default 3000). Visit `http://localhost:3000/healthz` to get a JSON payload with status, uptime, heapUsedMB, and active sessions.
 
-### Adding New Features
+## Testing & linting
 
-1. **New Commands**: Add handlers in `bot.js`
-2. **Search Logic**: Extend `DoctorSearch` class in `utils.js`
-3. **UI Improvements**: Modify message formatting functions
+Project includes basic dev tooling configuration. To run tests and linters locally:
 
-### Testing
-
-```bash
-# Start in development mode
-npm run dev
-
-# Test with your Telegram account
-# Search for: "Computer Science", "Mohammad", "S-321"
+```powershell
+npm install
+npm run lint
+npm test
 ```
 
-## 🚀 Deployment
+(You may need to install dev dependencies locally first.)
 
-### Local 24/7 Operation
-```bash
-node deploy.js
-```
+## Notes & removed features
 
-### Cloud Deployment (Recommended)
-For true 24/7 operation, deploy to:
-- **Heroku**: Free tier available
-- **Railway**: Free tier available
-- **Render**: Free tier available
-- **VPS**: DigitalOcean, AWS, etc.
+- The repository no longer includes any external AI integration or CLI deploy helper scripts. Those historical references were removed to keep the bot lightweight and self-contained.
+- The bot intentionally uses file-based persistence (JSON) with atomic writes for simplicity. If you require a DB, consider replacing the save/load helpers with a DB-backed implementation.
 
-### Environment Variables
-Set these in your deployment platform:
-```
-BOT_TOKEN=your_bot_token_here
-NODE_ENV=production
-```
+## Contributing
 
-## 📈 Monitoring
-
-The bot includes built-in monitoring:
-- Health checks every 30 minutes
-- Session cleanup every hour
-- Automatic restart on crashes
-- Usage statistics
-
-## 🔒 Security
-
-- Bot token is stored in config (consider using environment variables)
-- Input validation and sanitization
-- Error handling and logging
-- Rate limiting (built into Telegram API)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📝 License
-
-MIT License - feel free to use and modify!
-
-## 🆘 Support
-
-If you encounter issues:
-1. Check the console logs
-2. Verify the bot token
-3. Ensure the doctors.json file is accessible
-4. Check your internet connection
-
-## 🎯 Future Enhancements
-
-- [ ] Webhook support for better performance
-- [ ] Database integration for dynamic updates
-- [ ] Admin panel for data management
-- [ ] Multi-language support
-- [ ] Advanced analytics
-- [ ] Integration with HTU systems
+Small changes are welcome via pull requests. Please run tests and linting before submitting.
 
 ---
 
-**Made with ❤️ for HTU Community** 
+If you'd like, I can also:
+- Add a short CHANGELOG section describing recent removals (Gemini, axios) and additions (prefs, beginner mode, health endpoint).
+- Add a small `docker-compose` or PM2 sample for production hosting.
+

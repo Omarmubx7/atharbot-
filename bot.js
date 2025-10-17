@@ -27,10 +27,10 @@ function ensureSession(chatId) {
 // Helper: build simple inline keyboard for beginners or normal keyboard
 function buildWelcomeInline(chatId) {
     const s = ensureSession(chatId);
-    const beginnerLabel = s.beginner ? '🔁 Turn off Beginner Mode' : '✨ Beginner Mode'
+    const beginnerLabel = s.beginner ? 'Turn off Beginner' : 'Beginner Help';
     return {
         inline_keyboard: [
-            [{ text: '🔍 Search (type any name)', callback_data: 'start' }],
+            [{ text: '� Quick Search', callback_data: 'start' }],
             [{ text: '🏢 Departments', callback_data: 'departments' }, { text: '🎯 Clubs', callback_data: 'clubs' }],
             [{ text: beginnerLabel, callback_data: 'beginner_toggle' }, { text: '❓ Help', callback_data: 'help' }]
         ]
@@ -159,34 +159,27 @@ bot.onText(/\/start/, async (msg) => {
     
     console.log(`👋 New user started bot: ${user.first_name} (${user.id})`);
     
-    const welcomeMessage = `👋 **Welcome ${user.first_name}!**
+    const welcomeMessage = `👋 Hi ${user.first_name} — welcome to Athar Bot!
 
-I'm **Athar Bot** - your HTU assistant. Ask me anything or search directly!
+I'm here to help you find people, clubs, and rooms on campus.
 
-**💬 Ask Questions:**
-• "What are Razan's office hours?"
-• "Who is the admission office?"
-• "Where is Computer Science?"
-
-**� Or Search:**
-• Names: "Mohammad"
-• Departments: "Engineering"
-• Clubs: "Programming"
-• Offices: "S-321"`;
+How to start:
+• Type a name (e.g. "Mohammad")
+• Or type a room (e.g. "S-321")
+• Or tap one of the buttons below.`;
 
     const keyboard = {
         inline_keyboard: [
             [
-                { text: ' All Departments', callback_data: 'departments' },
-                { text: '🎯 All Clubs', callback_data: 'clubs' }
+                { text: '🏢 Departments', callback_data: 'departments' },
+                { text: '🎯 Clubs', callback_data: 'clubs' }
             ],
             [
-                { text: '🏫 Building Guide', callback_data: 'buildings' },
-                { text: '📊 Statistics', callback_data: 'stats' }
-            ],
-            [
-                { text: '📝 Search History', callback_data: 'history' },
+                { text: '🔎 Quick Search', callback_data: 'start' },
                 { text: '❓ Help', callback_data: 'help' }
+            ],
+            [
+                { text: '📝 My Searches', callback_data: 'history' }
             ]
         ]
     };
@@ -250,48 +243,30 @@ bot.onText(/\/help/, async (msg) => {
     const chatId = msg.chat.id;
     const s = ensureSession(chatId);
     if (s.beginner) {
-        const simple = `👋 Hi! I'm Athar Bot. I can help you find people, clubs, and rooms.
+        const simple = `👋 Hi! Quick guide:
 
-1) Type a name or place (e.g. "Mohammad" or "S-321").
+1) Type a name or room (e.g. "Mohammad" or "S-321").
 2) Tap a button to browse departments or clubs.
-3) Tap any result to see contact info and office hours.
+3) Tap a result for contact and office details.
 
-Try now: type a name like "Mohammad"`;
-        const kb = { inline_keyboard: [[{ text: '🔍 Type and search', callback_data: 'start' }], [{ text: '🏢 Departments', callback_data: 'departments' }, { text: '🎯 Clubs', callback_data: 'clubs' }]] };
+Try typing a name now!`;
+        const kb = { inline_keyboard: [[{ text: '� Start Search', callback_data: 'start' }], [{ text: '🏢 Departments', callback_data: 'departments' }, { text: '🎯 Clubs', callback_data: 'clubs' }]] };
         await bot.sendMessage(chatId, simple, { parse_mode: 'Markdown', reply_markup: kb });
         return;
     }
 
-    const helpMessage = `🤖 **Athar Bot - Your University Helper**
+    const helpMessage = `❓ Need help? Here's how:
 
-👋 **How to Use:**
-Just type what you're looking for! I'll understand what you mean.
+• Type a name to find a person (e.g. "Mohammad").
+• Type a room number to find an office (e.g. "S-321").
+• Tap 'Departments' or 'Clubs' to browse lists.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-�🔍 **Smart Search Examples:**
-👨‍⚕️ **Find Doctors:** "Mohammad", "Computer Science", "S-321"
-🎯 **Find Clubs:** "Entrepreneurship", "Volunteer team", "programming"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚡ **Available Commands:**
-/start - Welcome message with quick actions
-/help - This helpful guide
-/clubs - Browse all clubs and teams
-/buildings - Campus building guide
-/history - View your recent searches
-/stats - Bot statistics and info`;
+Commands: /start /help /beginner /prefs`;
 
     const keyboard = {
         inline_keyboard: [
-            [
-                { text: '🏢 Browse Departments', callback_data: 'departments' },
-                { text: '🎯 Browse Clubs', callback_data: 'clubs' }
-            ],
-            [
-                { text: '🏠 Back to Start', callback_data: 'start' }
-            ]
+            [ { text: '🏢 Departments', callback_data: 'departments' }, { text: '🎯 Clubs', callback_data: 'clubs' } ],
+            [ { text: '🏠 Back to Start', callback_data: 'start' } ]
         ]
     };
 
