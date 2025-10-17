@@ -1,0 +1,68 @@
+{
+  "title": "HTU Class Codes 101",
+  "description": "A guide to understanding classroom codes at HTU.",
+  "legend": {
+    "N": {
+      "name": "North",
+      "nickname": "Blue Building",
+      "color": "Blue"
+    },
+    "S": {
+      "name": "South",
+      "nickname": "Red / New Soft",
+      "color": "Red"
+    },
+    "IJC": {
+      "name": "Programming Building",
+      "nickname": "الهندي / مبنى إيمان القديم",
+      "color": "Yellow"
+    },
+    "W": {
+      "name": "West",
+      "nickname": "Orange Village / Old Soft",
+      "color": "Orange"
+    },
+    "WS": {
+      "name": "Workshop",
+      "nickname": "Workshop Building",
+      "color": "Neutral"
+    }
+  },
+  "format_rules": {
+    "step_1": "Letter = Building",
+    "step_2": "First digit = Floor number",
+    "step_3": "Remaining digits = Room number"
+  },
+  "examples": [
+    {
+      "code": "N-402",
+      "building": "North (Blue Building)",
+      "floor": 4,
+      "room": "02"
+    },
+    {
+      "code": "S-103",
+      "building": "South (Red / New Soft)",
+      "floor": 1,
+      "room": "03"
+    },
+    {
+      "code": "W-205",
+      "building": "West (Orange Village / Old Soft)",
+      "floor": 2,
+      "room": "05"
+    },
+    {
+      "code": "IJC-301",
+      "building": "Programming Building (الهندي / مبنى إيمان القديم)",
+      "floor": 3,
+      "room": "01"
+    },
+    {
+      "code": "WS-102",
+      "building": "Workshop",
+      "floor": 1,
+      "room": "02"
+    }
+  ]
+}
