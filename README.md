@@ -33,9 +33,6 @@ npm run dev
 
 # For production (24/7 operation)
 npm start
-
-# For deployment with auto-recovery
-node deploy.js
 ```
 
 ## 📱 Bot Commands
@@ -46,7 +43,6 @@ node deploy.js
 | `/help` | Show help and available commands |
 | `/departments` | List all available departments |
 | `/stats` | Show bot statistics |
-| `/random` | (removed) |
 
 ## 🔍 Search Features
 
@@ -71,7 +67,6 @@ telegram-bot/
 ├── bot.js          # Main bot logic
 ├── utils.js        # Search and utility functions
 ├── config.js       # Configuration settings
-├── deploy.js       # 24/7 deployment script
 ├── package.json    # Dependencies
 └── README.md       # This file
 ```

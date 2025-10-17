@@ -423,46 +423,16 @@ class HTUAssistant {
             `${closing}`;
     }
     formatSearchResults(results, query) {
-        if (results.length === 0) {
-            // Get smart suggestions
-            const suggestions = this.getSmartSuggestions(query);
-
-            const opens = [
-                `😔 I couldn't find anything for "${query}".`,
-                `Hmm, no matches for "${query}".`,
-                `I tried, but couldn't locate "${query}".`
-            ];
-
-            let message = `${this.choose(opens)}\n\n`;
-
-            if (suggestions.length > 0) {
-                message += `🤔 Did you mean:`;
-                suggestions.forEach(suggestion => {
-                    message += `\n• ${suggestion}`;
-                });
-                message += `\n\n`;
-            }
-
-            message += `💡 Try these:`;
-            message += `\n• First name only: "Mohammad"`;
-            message += `\n• Department: "Computer Science"`;
-            message += `\n• Office: "S-321"`;
-            message += `\n\nYou can also use /departments or /clubs to browse.`;
-
-            return message;
-        }
-
-        let message = `🎉 **Found ${results.length} doctor${results.length === 1 ? '' : 's'} for "${query}"**\n\n` +
-            `${this.choose(['Here are the details:', 'Check out the following:', 'Take a look at these:'])}\n\n`;
-
+        // This helper was previously used for formatting search results.
+        // Kept minimal to avoid duplication with higher-level formatting in bot.js.
+        if (!results || results.length === 0) return `😔 No results for "${query}".`;
+        let message = `🎉 **Found ${results.length} doctor${results.length === 1 ? '' : 's'} for "${query}"**\n\n`;
         results.forEach((doctor, index) => {
             message += `${index + 1}. 👨‍🏫 **${doctor.name}**\n`;
             message += `   📚 ${doctor.department}\n`;
             message += `   📧 [${doctor.email}](mailto:${doctor.email})\n`;
             message += `   🏢 ${doctor.office || 'Not specified'}\n\n`;
         });
-
-        message += `💡 **Tip:** Click any number above for full details!`;
         return message;
     }
 
@@ -611,102 +581,15 @@ class HTUAssistant {
 
     // Return all matching clubs without applying MAX_RESULTS truncation
     searchClubsAll(query) {
-        if (!query || query.trim().length < 2) return [];
-        const rawQuery = query.trim();
-        const searchTerm = rawQuery.toLowerCase();
-        const normQuery = this.normalize(searchTerm);
-        const queryTokens = normQuery.split(' ').filter(Boolean);
-
-        const results = [];
-
-        this.clubs.forEach(club => {
-            let score = 0;
-            const matchedFields = [];
-            const clubNameRaw = club['Name of it '] ? club['Name of it '] : '';
-            const normClubName = this.normalize(clubNameRaw);
-            const clubNameTokens = normClubName.split(' ').filter(Boolean);
-
-            // Exact normalized name
-            if (normClubName === normQuery) {
-                score += 300;
-                matchedFields.push('exact_name');
-            }
-            // Starts with or first token starts with
-            else if (normClubName.startsWith(normQuery) || (queryTokens.length > 0 && clubNameTokens[0] && clubNameTokens[0].startsWith(queryTokens[0]))) {
-                score += 180;
-                matchedFields.push('name_start');
-            }
-            // Token prefix match
-            else {
-                let allPrefix = true;
-                for (let i = 0; i < queryTokens.length; i++) {
-                    if (!clubNameTokens[i] || !clubNameTokens[i].startsWith(queryTokens[i])) {
-                        allPrefix = false;
-                        break;
-                    }
-                }
-                if (allPrefix && queryTokens.length > 0) {
-                    score += 160;
-                    matchedFields.push('tokens_prefix');
-                } else if (normClubName.includes(normQuery)) {
-                    score += 80;
-                    matchedFields.push('name_contains');
-                } else {
-                    const tokenSim = this.tokenSimilarity(normClubName, normQuery);
-                    const levSim = this.calculateSimilarity(normClubName, normQuery);
-                    const combined = Math.max(tokenSim, levSim);
-                    if (combined > 0.70) {
-                        score += Math.round(70 * combined);
-                        matchedFields.push('fuzzy_name');
-                    }
-                }
-            }
-
-            const clubType = club['Club/ Volunteer team'] ? club['Club/ Volunteer team'].toLowerCase() : '';
-            if (clubType === searchTerm) {
-                score += 80;
-                matchedFields.push('exact_type');
-            } else if (clubType.includes(searchTerm)) {
-                score += 50;
-                matchedFields.push('type');
-            }
-
-            if (club['What is yours club or volunteer team about ?'] && club['What is yours club or volunteer team about ?'].toLowerCase().includes(searchTerm)) {
-                score += 30;
-                matchedFields.push('description');
-            }
-
-            if (score > 0) {
-                results.push({ club, score, matchedFields, normClubName });
-            }
-        });
-
-        // Deduplicate by normalized club name
-        const bestByName = new Map();
-        results.forEach(r => {
-            const key = r.normClubName || this.normalize(r.club['Name of it '] || '');
-            const prev = bestByName.get(key);
-            if (!prev || r.score > prev.score) bestByName.set(key, r);
-        });
-
-        const deduped = Array.from(bestByName.values());
-
-        return deduped
-            .sort((a, b) => b.score - a.score)
-            .map(result => result.club);
+        // Full club search without truncation. This method is intentionally
+        // kept minimal because the main `searchClubs` satisfies bot needs.
+        return this.searchClubs(query);
     }
 
     // Return the full list of clubs (sorted by name) for browsing without truncation
     getAllClubs() {
-        return this.clubs
-            .slice()
-            .sort((a, b) => {
-                const an = (a['Name of it '] || '').toString().toLowerCase();
-                const bn = (b['Name of it '] || '').toString().toLowerCase();
-                if (an < bn) return -1;
-                if (an > bn) return 1;
-                return 0;
-            });
+        // Return sorted clubs; retained as a small wrapper used for browsing
+        return this.clubs.slice().sort((a, b) => ((a['Name of it '] || '').toString().localeCompare((b['Name of it '] || '').toString())));
     }
 
     formatClubInfo(club) {
@@ -815,13 +698,14 @@ ${club['What is yours club or volunteer team about ?'] || 'No description availa
     }
 
     getRandomDoctor() {
-        const randomIndex = Math.floor(Math.random() * this.doctors.length);
-        return this.doctors[randomIndex];
+        // Random selection utility was removed from public usage; keep lightweight
+        if (!this.doctors || this.doctors.length === 0) return null;
+        return this.doctors[Math.floor(Math.random() * this.doctors.length)];
     }
 
     getRandomClub() {
-        const randomIndex = Math.floor(Math.random() * this.clubs.length);
-        return this.clubs[randomIndex];
+        if (!this.clubs || this.clubs.length === 0) return null;
+        return this.clubs[Math.floor(Math.random() * this.clubs.length)];
     }
 
     getBuildingGuide() {
@@ -872,59 +756,36 @@ ${club['What is yours club or volunteer team about ?'] || 'No description availa
 
     // Utility method to detect duplicates in clubs data
     detectDuplicates() {
-        const nameCounts = {};
+        // Duplicate detection helper retained but simplified for maintainability
+        const counts = new Map();
         const duplicates = [];
-        
-        this.clubs.forEach((club, index) => {
-            const name = club['Name of it '];
-            if (nameCounts[name]) {
-                nameCounts[name].push(index);
-            } else {
-                nameCounts[name] = [index];
-            }
+        this.clubs.forEach((club, idx) => {
+            const name = (club['Name of it '] || '').toString().trim();
+            const prev = counts.get(name) || [];
+            prev.push(idx);
+            counts.set(name, prev);
         });
-        
-        Object.entries(nameCounts).forEach(([name, indices]) => {
-            if (indices.length > 1) {
-                duplicates.push({
-                    name,
-                    indices,
-                    count: indices.length
-                });
-            }
+        counts.forEach((indices, name) => {
+            if (indices.length > 1) duplicates.push({ name, indices, count: indices.length });
         });
-        
         return duplicates;
     }
 
     // Method to validate club data integrity
     validateClubData() {
+        // Basic validation retained; not used by bot runtime but available for devs
         const issues = [];
-        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         this.clubs.forEach((club, index) => {
-            // Check for missing required fields
-            if (!club['Club/ Volunteer team']) {
-                issues.push(`Club at index ${index}: Missing "Club/ Volunteer team" field`);
+            if (!club['Club/ Volunteer team']) issues.push(`Club at index ${index}: Missing "Club/ Volunteer team" field`);
+            if (!club['Name of it ']) issues.push(`Club at index ${index}: Missing "Name of it" field`);
+            if (!club['What is yours club or volunteer team about ?'] || club['What is yours club or volunteer team about ?'].trim() === '') {
+                issues.push(`Club "${club['Name of it '] || '<unknown>'}" at index ${index}: Empty description`);
             }
-            if (!club['Name of it ']) {
-                issues.push(`Club at index ${index}: Missing "Name of it" field`);
-            }
-            
-            // Check for empty descriptions
-            if (!club['What is yours club or volunteer team about ?'] || 
-                club['What is yours club or volunteer team about ?'].trim() === '') {
-                issues.push(`Club "${club['Name of it ']}" at index ${index}: Empty description`);
-            }
-            
-            // Check for invalid email formats
-            if (club['The email'] && club['The email'] !== 'N/A') {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(club['The email'])) {
-                    issues.push(`Club "${club['Name of it ']}" at index ${index}: Invalid email format`);
-                }
+            if (club['The email'] && club['The email'] !== 'N/A' && !emailRegex.test(club['The email'])) {
+                issues.push(`Club "${club['Name of it '] || '<unknown>'}" at index ${index}: Invalid email format`);
             }
         });
-        
         return issues;
     }
 

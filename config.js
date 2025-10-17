@@ -58,5 +58,5 @@ Just type what you're looking for!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
 
-GOOGLE_GEMINI_API_KEY: process.env.GOOGLE_GEMINI_API_KEY,
+    // Google Gemini integration removed
 };

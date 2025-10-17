@@ -3,7 +3,6 @@ const { HTUAssistant, ensureDirForFile } = require('./utils');
 const config = require('./config');
 const cron = require('node-cron');
 const fs = require('fs');
-const http = require('http');
 
 
 // Google Gemini AI integration is now handled inside the /ai command handler for better error handling.
@@ -55,41 +54,7 @@ function saveJson(filePath, data) {
 
 // ...existing code...
 
-// Handle /ai command for Google Gemini AI
-bot.onText(/\/ai(?: (.+))?/i, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const userInput = match[1] ? match[1].trim() : null;
-
-    if (!config.GOOGLE_GEMINI_API_KEY) {
-        await bot.sendMessage(chatId, '❌ Gemini AI is not configured. Please contact the admin.');
-        return;
-    }
-
-    let GoogleGenerativeAI;
-    try {
-        GoogleGenerativeAI = require('@google/generative-ai').GoogleGenerativeAI;
-    } catch (e) {
-        await bot.sendMessage(chatId, '❌ Gemini AI module is not installed. Please run `npm install @google/generative-ai`.');
-        return;
-    }
-
-    if (!userInput) {
-        await bot.sendMessage(chatId, '🤖 *Ask me anything!*\n\nSend your question after /ai, for example:\n/ai What is the capital of France?\n/ai Summarize the theory of relativity.', { parse_mode: 'Markdown' });
-        return;
-    }
-
-    await bot.sendChatAction(chatId, 'typing');
-    try {
-        const gemini = new GoogleGenerativeAI(config.GOOGLE_GEMINI_API_KEY);
-        const model = gemini.getGenerativeModel({ model: 'gemini-pro' });
-        const result = await model.generateContent(userInput);
-        const response = (result && result.response && typeof result.response.text === 'function') ? result.response.text() : (result && result.response ? result.response : 'Sorry, I could not generate a response.');
-        await bot.sendMessage(chatId, `🤖 *Gemini AI says:*\n\n${response}`, { parse_mode: 'Markdown' });
-    } catch (error) {
-        console.error('Gemini AI error:', error);
-        await bot.sendMessage(chatId, '❌ Sorry, there was an error getting a response from Gemini AI.');
-    }
-});
+// /ai command (AI integration removed)
 
 function saveSearchHistoryToFile() {
     const obj = {};
@@ -1221,31 +1186,8 @@ bot.onText(/^(?!\/).+/, async (msg) => {
             }
 
             if (doctorResults.length === 0 && clubResults.length === 0) {
-                // --- Gemini AI fallback ---
-                if (process.env.GOOGLE_GEMINI_API_KEY || config.GOOGLE_GEMINI_API_KEY) {
-                    let GoogleGenerativeAI;
-                    try {
-                        GoogleGenerativeAI = require('@google/generative-ai').GoogleGenerativeAI;
-                    } catch (e) {
-                        await bot.sendMessage(chatId, '❌ Gemini AI module is not installed. Please run `npm install @google/generative-ai`.');
-                        return;
-                    }
-                    await bot.sendChatAction(chatId, 'typing');
-                    try {
-                        const gemini = new GoogleGenerativeAI(config.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY);
-                        const model = gemini.getGenerativeModel({ model: 'gemini-pro' });
-                        const result = await model.generateContent(query);
-                        const response = (result && result.response && typeof result.response.text === 'function') ? result.response.text() : (result && result.response ? result.response : 'Sorry, I could not generate a response.');
-                        await bot.sendMessage(chatId, `🤖 *Gemini AI says:*\n\n${response}`, { parse_mode: 'Markdown' });
-                    } catch (error) {
-                        console.error('Gemini AI error:', error);
-                        await bot.sendMessage(chatId, '❌ Sorry, there was an error getting a response from Gemini AI.');
-                    }
-                    return;
-                } else {
-                    await bot.sendMessage(chatId, '😔 I could not find an answer for your question.');
-                    return;
-                }
+                await bot.sendMessage(chatId, '😔 I could not find an answer for your question.');
+                return;
             } else if (doctorResults.length === 1 && clubResults.length === 0) {
                 // ...existing code for single doctor result...
                 const detailedMessage = htuAssistant.formatDoctorInfo(doctorResults[0]);
